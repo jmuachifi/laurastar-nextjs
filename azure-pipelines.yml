@@ -1,0 +1,40 @@
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+variables:
+  - group: laurastar-library
+
+stages:
+  - template: templates/ci-template.yml
+    parameters:
+      vmImage: 'ubuntu-latest'
+      nodeVersion: '20.x'
+      artifactName: 'drop'
+      appDirectory: 'my-app'
+      buildOutput: '$(Build.ArtifactStagingDirectory)/my-app-$(Build.BuildId).zip'
+      nodeModules: 'node_modules'
+      packagelockJson: 'package-lock.json'
+      standalonePath: '/.next/standalone'
+
+  - stage: DeployDev
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'develop'))
+    variables:
+      - template: variables/dev-vars.yml
+    jobs:
+      - template: templates/deploy-template.yml
+        parameters:
+          environment: 'dev'
+
+  - stage: DeployProd
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'main'))
+    variables:
+      - template: variables/prod-vars.yml
+    jobs:
+      - template: templates/deploy-template.yml
+        parameters:
+          environment: 'prod'

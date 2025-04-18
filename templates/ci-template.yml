@@ -1,0 +1,69 @@
+parameters:
+  vmImage: ""
+  nodeVersion: ""
+  artifactName: ""
+  appDirectory: ""
+  buildOutput: ""
+  nodeModules: ""
+  packagelockJson: ""
+  standalonePath: ""
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildNextJsApp
+        pool:
+          vmImage: ${{ parameters.vmImage }}
+        steps:
+          # Restore node_modules cache
+          - task: CacheBeta@2
+            inputs:
+              key: 'npm | "$(Agent.OS)" | ${{ parameters.appDirectory }}/${{ parameters.packagelockJson }}'
+              path: "${{ parameters.appDirectory }}/${{ parameters.nodeModules }}"
+              cacheHitVar: "CACHE_RESTORED"
+            displayName: "Restore Node Modules Cache"
+
+          # Use Node.js
+          - task: NodeTool@0
+            inputs:
+              versionSpec: ${{ parameters.nodeVersion }}
+            displayName: "Set up Node.js"
+
+          # Install dependencies
+          - script: |
+              cd ${{ parameters.appDirectory }}
+              npm install
+            displayName: "Install Dependencies"
+
+          # Save node_modules cache
+          - task: CacheBeta@2
+            inputs:
+              key: 'npm | "$(Agent.OS)" | ${{ parameters.appDirectory }}/${{ parameters.packagelockJson }}'
+              path: "${{ parameters.appDirectory }}/${{ parameters.nodeModules }}"
+            condition: succeeded()
+            displayName: "Save Node Modules Cache"
+
+          # Lint, Test, Build
+          - script: |
+              cd ${{ parameters.appDirectory }}
+              npm run lint
+              npm run test
+              npm run build
+            displayName: "Lint, Test, Build"
+
+          # Archive Build Output
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: "${{ parameters.appDirectory }}/${{ parameters.standalonePath }}"
+              includeRootFolder: false
+              archiveType: "zip"
+              archiveFile: "${{ parameters.buildOutput }}"
+              replaceExistingArchive: true
+            displayName: "Archive Build Output"
+
+          # Publish Build Artifacts
+          - task: PublishBuildArtifacts@1
+            inputs:
+              pathToPublish: "${{ parameters.buildOutput }}"
+              artifactName: ${{ parameters.artifactName }}
+            displayName: "Publish Build Artifacts"

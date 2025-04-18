@@ -1,0 +1,24 @@
+parameters:
+  - name: environment
+    type: string
+
+jobs:
+  - deployment: DeployToWebApp
+    environment: ${{ parameters.environment }}
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            # Download the build artifact
+            - download: current
+              artifact: drop
+
+            # Deploy directly to the production environment
+            - task: AzureWebApp@1
+              displayName: 'Deploy to Azure Web App'
+              inputs:
+                azureSubscription: $(azureServiceConnection)
+                appName: $(webAppName)
+                package: $(Pipeline.Workspace)/drop/my-app-$(Build.BuildId).zip
+                runtimeStack: 'NODE|20-lts'
+                startupCommand: 'node server.js'

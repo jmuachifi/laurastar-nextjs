@@ -1,0 +1,4 @@
+variables:
+  azureServiceConnection: 'azureServiceConnectionv2'
+  webAppName: 'nextjsappservice'
+  resourceGroupName: 'general_demo'
